@@ -19,7 +19,7 @@
             background-size: cover;
             background-attachment: fixed;
             background-position: center;
-            color:blue;
+            color: blue;
         }
 
         .btn-custom {
@@ -41,10 +41,10 @@
 
         .card {
             border: none;
-           
+
         }
 
-       
+
 
         .fa-eur {
             margin-left: 5px;
@@ -62,7 +62,8 @@
     <main id="app">
         <div class="container mb-3 container-custom">
             <div class="d-flex">
-                <button class="btn btn-custom fs-3 p-3 ms-auto mb-3" v-on:click="showCheckOut" :disabled="!cartSize > 0">
+                <button class="btn btn-custom fs-3 p-3 ms-auto mb-3" v-on:click="showCheckOut"
+                    :disabled="!cartSize > 0">
                     {{cartSize}} <i class="fa fa-cart-plus"></i>
                 </button>
             </div>
@@ -108,7 +109,8 @@
                                 <p class="mb-1">Available: {{product.avaliability}}</p>
                             </div>
                             <div class="card-footer d-flex justify-content-between">
-                                <button class="btn btn-outline-success" v-on:click='addToCart(product)' :disabled="product.avaliability === 0">
+                                <button class="btn btn-outline-success" v-on:click='addToCart(product)'
+                                    :disabled="product.avaliability === 0">
                                     <i class="fa fa-cart-plus"></i>
                                 </button>
                                 <button class="btn btn-outline-danger" v-on:click='removeProduct(product)'>
@@ -131,7 +133,8 @@
                                 <div class="col-sm-4">
                                     <p class="mb-1">Title: {{item.lesson.title}}</p>
                                     <p class="mb-1">Quantity: {{item.amount}}</p>
-                                    <button class="btn btn-outline-danger btn-sm" v-on:click='removeProduct(item.lesson)'>
+                                    <button class="btn btn-outline-danger btn-sm"
+                                        v-on:click='removeProduct(item.lesson)'>
                                         <i class="fa fa-minus-circle"></i>
                                     </button>
                                 </div>
@@ -154,13 +157,16 @@
                                             <form>
                                                 <div class="mb-3">
                                                     <label for="username" class="form-label">Name</label>
-                                                    <input type="text" v-model="username" class="form-control" id="username" name="username" placeholder="Name" required>
+                                                    <input type="text" v-model="username" class="form-control"
+                                                        id="username" name="username" placeholder="Name" required>
                                                 </div>
                                                 <div class="mb-3">
                                                     <label for="phone" class="form-label">Number</label>
-                                                    <input type="number" v-model="phone" class="form-control" id="phone" name="phone" placeholder="Number" required>
+                                                    <input type="number" v-model="phone" class="form-control" id="phone"
+                                                        name="phone" placeholder="Number" required>
                                                 </div>
-                                                <button type="submit" class="btn btn-primary" onclick="alert('Order Completed')" :disabled="!completeOrder">
+                                                <button type="submit" class="btn btn-primary"
+                                                    onclick="alert('Order Completed')" :disabled="!completeOrder">
                                                     Submit
                                                 </button>
                                             </form>
@@ -188,67 +194,108 @@
                 sortAttribute: 'subject',
                 sortOrder: 'TopToBottom',
                 sortedLessons: [],
+                baseURL: "https://cst-3145-coursework-2.vercel.app/",
             },
             methods: {
-                addToCart(lesson) {
-                    if (lesson.avaliability > 0) {
-                        lesson.avaliability--;
-                        var cartIndex = this.cart.findIndex(i => i.lesson === lesson);
-                        if (cartIndex > -1) {
-                            this.cart[cartIndex].amount++;
-                        } else {
-                            this.cart.push({
-                                lesson: lesson,
-                                amount: 1
-                            });
-                        }
-                    }
+                async getLessons() {
+                    var res = await fetch(`${this.baseURL}collection/lessons`);
+                    this.lessons = await res.json();
                 },
-                removeProduct(lesson) {
-                    const index = this.cart.findIndex(i => i.lesson === lesson);
-                    if (index !== -1) {
-                        this.cart[index].amount--;
-                        lesson.avaliability++;
-                        if (this.cart[index].amount == 0) {
-                            this.cart.splice(index, 1);
-                        }
-                    }
+
+                async searchLessons() {
+                    var query = `?search=${this.searchTerm}&sort=${this.sortAttribute}&order=${this.sortOrder}`
+
+                    var res = await fetch(`${this.baseURL}search/collection/lessons/${query}`);
+                    this.lessons = await res.json();
                 },
-                showCheckOut() {
-                    this.showProduct = !this.showProduct;
-                },
-            },
-            computed: {
-                searchLessons() {
-                    const searchTerm = this.searchTerm.toLowerCase();
-                    return this.lessons.filter(lesson =>
-                        lesson.title.toLowerCase().includes(searchTerm) ||
-                        lesson.location.toLowerCase().includes(searchTerm)
-                    );
-                },
-                sortLessons() {
-                    return this.searchLessons.slice().sort((a, b) => {
-                        const valueA = a[this.sortAttribute];
-                        const valueB = b[this.sortAttribute];
-                        const comparison = typeof valueA === 'string'
-                            ? valueA.localeCompare(valueB)
-                            : valueA - valueB;
-                        return this.sortOrder === 'TopToBottom' ? comparison : -comparison;
+
+                async submitOrder() {
+                    var order = {
+                        cart: [...this.cart],
+                        username: this.username,
+                        phone: this.phone,
+                    };
+
+                    // Update lessons
+                    this.cart.forEach((item) => {
+                        fetch(`${this.baseURL}collection/lessons/${item.lesson._id}`, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ avaliability: item.lesson.avaliability }),
+                        });
                     });
+
+                    // Save Order
+                    await fetch(`${this.baseURL}collection/orders`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(order),
+                    });
+                    alert("Order Submitted");
+                    this.cart = [];
+                    this.showProduct = true;
                 },
-                cartSize() {
-                    return this.cart.reduce((sum, lesson) => sum + lesson.amount, 0);
-                },
-                canAddToCart(lessons) {
-                    return this.lessons.avaliability > this.checkItemCount(lessons.id);
-                },
-                cartTotal() {
-                    return this.cart.reduce((total, item) => total + (item.amount * item.lesson.price), 0);
-                },
-                completeOrder() {
-                    return /^[a-zA-Z]+$/.test(this.username) && /^\d+$/.test(this.phone);
+
+
+            addToCart(lesson) {
+                if (lesson.avaliability > 0) {
+                    lesson.avaliability--;
+                    var cartIndex = this.cart.findIndex(i => i.lesson === lesson);
+                    if (cartIndex > -1) {
+                        this.cart[cartIndex].amount++;
+                    } else {
+                        this.cart.push({
+                            lesson: lesson,
+                            amount: 1
+                        });
+                    }
                 }
+            },
+            removeProduct(lesson) {
+                const index = this.cart.findIndex(i => i.lesson === lesson);
+                if (index !== -1) {
+                    this.cart[index].amount--;
+                    lesson.avaliability++;
+                    if (this.cart[index].amount == 0) {
+                        this.cart.splice(index, 1);
+                    }
+                }
+            },
+            showCheckOut() {
+                this.showProduct = !this.showProduct;
+            },
+        },
+            computed: {
+            searchLessons() {
+                const searchTerm = this.searchTerm.toLowerCase();
+                return this.lessons.filter(lesson =>
+                    lesson.title.toLowerCase().includes(searchTerm) ||
+                    lesson.location.toLowerCase().includes(searchTerm)
+                );
+            },
+            sortLessons() {
+                return this.searchLessons.slice().sort((a, b) => {
+                    const valueA = a[this.sortAttribute];
+                    const valueB = b[this.sortAttribute];
+                    const comparison = typeof valueA === 'string'
+                        ? valueA.localeCompare(valueB)
+                        : valueA - valueB;
+                    return this.sortOrder === 'TopToBottom' ? comparison : -comparison;
+                });
+            },
+            cartSize() {
+                return this.cart.reduce((sum, lesson) => sum + lesson.amount, 0);
+            },
+            canAddToCart(lessons) {
+                return this.lessons.avaliability > this.checkItemCount(lessons.id);
+            },
+            cartTotal() {
+                return this.cart.reduce((total, item) => total + (item.amount * item.lesson.price), 0);
+            },
+            completeOrder() {
+                return /^[a-zA-Z]+$/.test(this.username) && /^\d+$/.test(this.phone);
             }
+        }
         });
     </script>
 </body>
