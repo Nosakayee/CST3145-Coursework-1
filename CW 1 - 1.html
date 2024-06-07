@@ -71,7 +71,7 @@
             <div v-if="showProduct">
 
                 <div class="mb-3">
-                    <input type="text" class="form-control" v-model="searchTerm" placeholder="Search Product...">
+                    <input type="text" class="form-control" v-model="searchTerm" placeholder="Search Product..."  v-on:input="searchLessons">
                 </div>
 
                 <div class="mb-3">
@@ -94,7 +94,7 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-sm-4 mb-3" v-for="product in sortLessons">
+                    <div class="col-sm-4 mb-3" v-for="product in lessons">
                         <div class="card h-100 shadow-sm">
                             <div class="card-header d-flex">
                                 <div>
@@ -154,7 +154,7 @@
                                     <div class="card">
                                         <div class="card-body">
                                             <h5 class="card-title">Details</h5>
-                                            <form>
+                                            <form @submit.prevent="submitOrder">
                                                 <div class="mb-3">
                                                     <label for="username" class="form-label">Name</label>
                                                     <input type="text" v-model="username" class="form-control"
@@ -166,7 +166,7 @@
                                                         name="phone" placeholder="Number" required>
                                                 </div>
                                                 <button type="submit" class="btn btn-primary"
-                                                    onclick="alert('Order Completed')" :disabled="!completeOrder">
+                                                    :disabled="!completeOrder">
                                                     Submit
                                                 </button>
                                             </form>
@@ -179,13 +179,13 @@
                 </div>
             </div>
     </main>
-    <script src="lessons.js"></script>
+
     <script>
         var app = new Vue({
             el: '#app',
             data: {
                 showProduct: true,
-                lessons: lessons,
+                lessons: [],
                 cart: [],
                 searchTerm: '',
                 username: '',
@@ -194,7 +194,10 @@
                 sortAttribute: 'subject',
                 sortOrder: 'TopToBottom',
                 sortedLessons: [],
-                baseURL: "https://cst-3145-coursework-2.vercel.app/",
+                baseURL: "http://localhost:3000/",
+            },
+            created() {
+                this.getLessons();
             },
             methods: {
                 async getLessons() {
@@ -237,65 +240,49 @@
                 },
 
 
-            addToCart(lesson) {
-                if (lesson.avaliability > 0) {
-                    lesson.avaliability--;
-                    var cartIndex = this.cart.findIndex(i => i.lesson === lesson);
-                    if (cartIndex > -1) {
-                        this.cart[cartIndex].amount++;
-                    } else {
-                        this.cart.push({
-                            lesson: lesson,
-                            amount: 1
-                        });
+                addToCart(lesson) {
+                    if (lesson.avaliability > 0) {
+                        lesson.avaliability--;
+                        var cartIndex = this.cart.findIndex(i => i.lesson === lesson);
+                        if (cartIndex > -1) {
+                            this.cart[cartIndex].amount++;
+                        } else {
+                            this.cart.push({
+                                lesson: lesson,
+                                amount: 1
+                            });
+                        }
                     }
-                }
-            },
-            removeProduct(lesson) {
-                const index = this.cart.findIndex(i => i.lesson === lesson);
-                if (index !== -1) {
-                    this.cart[index].amount--;
-                    lesson.avaliability++;
-                    if (this.cart[index].amount == 0) {
-                        this.cart.splice(index, 1);
+                },
+                removeProduct(lesson) {
+                    const index = this.cart.findIndex(i => i.lesson === lesson);
+                    if (index !== -1) {
+                        this.cart[index].amount--;
+                        lesson.avaliability++;
+                        if (this.cart[index].amount == 0) {
+                            this.cart.splice(index, 1);
+                        }
                     }
-                }
+                },
+                showCheckOut() {
+                    this.showProduct = !this.showProduct;
+                },
             },
-            showCheckOut() {
-                this.showProduct = !this.showProduct;
-            },
-        },
             computed: {
-            searchLessons() {
-                const searchTerm = this.searchTerm.toLowerCase();
-                return this.lessons.filter(lesson =>
-                    lesson.title.toLowerCase().includes(searchTerm) ||
-                    lesson.location.toLowerCase().includes(searchTerm)
-                );
-            },
-            sortLessons() {
-                return this.searchLessons.slice().sort((a, b) => {
-                    const valueA = a[this.sortAttribute];
-                    const valueB = b[this.sortAttribute];
-                    const comparison = typeof valueA === 'string'
-                        ? valueA.localeCompare(valueB)
-                        : valueA - valueB;
-                    return this.sortOrder === 'TopToBottom' ? comparison : -comparison;
-                });
-            },
-            cartSize() {
-                return this.cart.reduce((sum, lesson) => sum + lesson.amount, 0);
-            },
-            canAddToCart(lessons) {
-                return this.lessons.avaliability > this.checkItemCount(lessons.id);
-            },
-            cartTotal() {
-                return this.cart.reduce((total, item) => total + (item.amount * item.lesson.price), 0);
-            },
-            completeOrder() {
-                return /^[a-zA-Z]+$/.test(this.username) && /^\d+$/.test(this.phone);
+
+                cartSize() {
+                    return this.cart.reduce((sum, lesson) => sum + lesson.amount, 0);
+                },
+                canAddToCart(lessons) {
+                    return this.lessons.avaliability > this.checkItemCount(lessons.id);
+                },
+                cartTotal() {
+                    return this.cart.reduce((total, item) => total + (item.amount * item.lesson.price), 0);
+                },
+                completeOrder() {
+                    return /^[a-zA-Z]+$/.test(this.username) && /^\d+$/.test(this.phone);
+                }
             }
-        }
         });
     </script>
 </body>
